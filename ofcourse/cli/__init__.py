@@ -80,6 +80,9 @@ def new():
                         os.getcwd(), update=True)
     file_util.copy_file(os.path.join(yamls_dir, 'oer.yaml'),
                         os.getcwd(), update=True)
+
+    file_util.copy_file(os.path.join(source_dir, 'course.ics'),
+                        os.getcwd(), update=True)
     file_util.copy_file(os.path.join(source_dir, ".travis.yml"),
                         os.getcwd(), update=True)
 
@@ -183,7 +186,7 @@ def openshift(verbose, app, user, domain):
 
     if (not appname) and os.path.isfile(site_yaml):
         with open(site_yaml, 'r') as site:
-            s = yaml.load(site)
+            s = yaml.safe_load(site)
             appname = s.get("course", {}
                             ).get("openshift", {}
                                   ).get("app_name", None)

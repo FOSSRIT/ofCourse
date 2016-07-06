@@ -1,14 +1,14 @@
 import os
 
 from datetime import datetime, date, timedelta
-from urlparse import urlparse
+from six.moves.urllib.parse import urlparse
 import yaml
 
 from flask import Blueprint, redirect
-from flask.ext.mako import render_template
 
 import ofcourse
-from ofcourse.util import app_path, get_hw_keys
+from .util import app_path, get_hw_keys
+from .render import render_template
 
 participants_bp = Blueprint('participants_bp',
                             __name__,
@@ -80,7 +80,7 @@ def participants(root_dir):
         for fname in sorted(files):
             if fname.endswith('.yaml'):
                 with open(dirpath + '/' + fname) as students:
-                    contents = yaml.load(students)
+                    contents = yaml.safe_load(students)
                     contents['yaml'] = dirpath + '/' + fname
                     year_term_data = dirpath.split('/')
                     contents['participant_page'] = "{y}/{t}/{u}".format(
@@ -105,7 +105,7 @@ def participants(root_dir):
                         len(assignments))
 
     return render_template(
-        'blogs.mak', name='mako',
+        'blogs',
         student_data=student_data,
         gravatar=ofcourse.site.gravatar,
         target_number=target_number,

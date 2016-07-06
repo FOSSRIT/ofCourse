@@ -16,10 +16,13 @@ from datetime import datetime
 # flask dependencies
 from flask import Flask
 from flask import jsonify
-from flask.ext.mako import MakoTemplates, render_template
 from werkzeug.exceptions import NotFound
 
 # ofcourse
+from .render import render_init, render_template
+from .cal import (
+    load_calendar, normalize_categories, calendar_weeks,
+    assignment_data, items_assigned, items_due)
 from ofcourse.util import count_posts, app_path
 from ofcourse.blueprints import homework, lectures, quizzes
 from ofcourse.participants import participants_bp
@@ -28,14 +31,14 @@ app = Flask(__name__)
 app.static_folder = app_path("static")
 app.templates_folder = app_path("templates")
 app.people_folder = app_path("people")
-mako = MakoTemplates(app)
+render_init(app)
 
 
 # Automatically include site config
 @app.context_processor
 def inject_yaml():
     with open(app_path('site.yaml')) as site_yaml:
-        site_config = yaml.load(site_yaml)
+        site_config = yaml.safe_load(site_yaml)
 
         course_url = "http://localhost:5000/"
 
@@ -47,7 +50,6 @@ def inject_yaml():
         site_config['course']['public_url'] = course_url
     return site_config
 
-app.config['MAKO_TRANSLATE_EXCEPTIONS'] = False
 config = inject_yaml()
 COURSE_START = datetime.combine(config['course']['start'], datetime.min.time())
 COURSE_END = datetime.combine(config['course']['end'], datetime.max.time())
@@ -78,13 +80,13 @@ def gravatar(person_data, fallback_key, fallback_suffix):
 @app.route('/<page>')
 def simple_page(page):
     """
-    Render a simple page. Looks for a .mak template file
+    Render a simple page. Looks for a template file
     with the name of the page parameter that was passed in.
     By default, this just shows the homepage.
 
     """
 
-    return render_template('{}.mak'.format(page), name='mako')
+    return render_template(page)
 
 
 @app.route('/syllabus')
@@ -94,7 +96,14 @@ def syllabus():
 
     """
 
-    return render_template('syllabus.mak', name='mako')
+    return render_template(
+        'syllabus',
+        load_calendar=load_calendar,
+        normalize_categories=normalize_categories,
+        calendar_weeks=calendar_weeks,
+        assignment_data=assignment_data,
+        items_assigned=items_assigned,
+        items_due=items_due)
 
 
 @app.route('/blog/<year>/<term>/<username>')
@@ -109,9 +118,9 @@ def blog_posts(year, term, username):
 
     fname = os.path.join(app.people_folder, year, term, username) + ".yaml"
 
-    print "Getting blog count for: " + fname
+    print("Getting blog count for: " + fname)
     with open(fname) as student:
-        contents = yaml.load(student)
+        contents = yaml.safe_load(student)
         student_data = contents
 
     num_posts = 0
@@ -137,10 +146,10 @@ def participant_page(year, term, username):
     yaml_dir = app_path('people')
     participant_yaml = os.path.join(yaml_dir, year, term, username + '.yaml')
     with open(participant_yaml) as participant_file:
-        participant_data = yaml.load(participant_file)
+        participant_data = yaml.safe_load(participant_file)
 
     return render_template(
-        'participant.mak', name='mako',
+        'participant',
         participant_data=participant_data,
         gravatar=gravatar
     )
@@ -153,7 +162,7 @@ def resources():
     oer_links = []
     oer_yaml = app_path("oer.yaml")
     with open(oer_yaml) as oer_data:
-        oer_links = yaml.load(oer_data)
+        oer_links = yaml.safe_load(oer_data)
 
     res['links'] = {}
     res['Decks'] = []
@@ -175,7 +184,7 @@ def resources():
     if 'videos' in oer_links:
         res['links']['videos'] = oer_links['videos']
 
-    return render_template('resources.mak', name='mako', resources=res)
+    return render_template('resources', resources=res)
 
 
 app.register_blueprint(homework, url_prefix='/assignments')
